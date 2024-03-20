@@ -6,8 +6,6 @@ const bq=new BigQuery();
 const projId='midterm-visaxen';
 const datasetId='pdf_files';
 const tableId='file-list';
-let count_malicious = 0;
-let count_benign = 0; 
 
 exports.classifyFiles = async (file,context) => {
   const gcsFile = file;
@@ -16,6 +14,8 @@ exports.classifyFiles = async (file,context) => {
   const testBucket = storage.bucket(file.bucket);
   const maliBucket = storage.bucket('visaxen-pdftest-malicious');
   const benBucket = storage.bucket('visaxen-pdftest-benign');
+  let count_malicious = 0;
+  let count_benign = 0; 
 
   //Function to copy the path from test bucket to the destination bucket
   const copyFile = async (destBucket) => {
@@ -34,14 +34,16 @@ exports.classifyFiles = async (file,context) => {
     const [rows] = await bq.query(options);
     rows.forEach(row => {
       if(row.Class == 'Malicious'){
-        count_malicious++;
         copyFile(maliBucket);
       }
       else if(row.Class == 'Benign'){
-        count_benign++;
         copyFile(benBucket);
       }
     });
+    const [maliFiles] = await maliBucket.getFiles();
+    count_malicious += maliFiles.length;
+    const [benFiles] = await benBucket.getFiles();
+    count_benign += benFiles.length;
   }
 
   await scanFiles();
